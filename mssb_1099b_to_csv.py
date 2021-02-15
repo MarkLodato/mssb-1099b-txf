@@ -77,9 +77,11 @@ def parsePdf(path):
 
 
 if __name__ == '__main__':
-    if len(sys.argv) != 2:
-        sys.exit(f'Usage: {sys.argv[0]} <mssb_1099b_file.pdf>')
-    rows = parsePdf(sys.argv[1])
+    if len(sys.argv) < 2:
+        sys.exit(f'Usage: {sys.argv[0]} PDF_FILES...')
+    rows = [row for filename in sys.argv[1:] for row in parsePdf(filename)]
+    rows.sort(key=lambda r: (r.Category, r.Description, r.DateAcquired,
+                             r.DateSold, r.RefNumber))
     writer = csv.writer(sys.stdout)
     writer.writerow(FIELDS)
     writer.writerows(rows)
