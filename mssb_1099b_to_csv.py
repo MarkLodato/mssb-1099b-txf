@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Converts Morgan Stanley (MSSB) 1099-B PDFs to CSV."""
 
+import argparse
 import collections
 import csv
-import datetime
+import decimal
 import re
 import subprocess
 import sys
@@ -76,12 +77,55 @@ def parsePdf(path):
     ]
 
 
+def sortRows(rows):
+    rows.sort(key=lambda r: (r.Category, r.Description, r.DateAcquired, r.
+                             DateSold, r.RefNumber))
+
+
+def mergeRows(rows):
+    def D(string):
+        return decimal.Decimal(string.replace('$', '').replace(',', ''))
+
+    def sumColumn(group, field_name):
+        dollar = '$' if getattr(group[0], field_name).startswith('$') else ''
+        total = sum(D(getattr(row, field_name)) for row in group)
+        return f'{dollar}{total:,}'
+
+    def mergeHelper(group):
+        return group[0]._replace(
+            RefNumber='',
+            PlanNumber='',
+            Quantity=sumColumn(group, 'Quantity'),
+            GrossProceeds=sumColumn(group, 'GrossProceeds'),
+            CostBasis=sumColumn(group, 'CostBasis'),
+        )
+
+    groups = {}
+    for row in rows:
+        group_by = (row.Category, row.Description, row.CUSIP, row.DateAcquired,
+                    row.DateSold)
+        groups.setdefault(group_by, []).append(row)
+    rows[:] = [mergeHelper(group) for group in groups.values()]
+
+
 if __name__ == '__main__':
-    if len(sys.argv) < 2:
-        sys.exit(f'Usage: {sys.argv[0]} PDF_FILES...')
-    rows = [row for filename in sys.argv[1:] for row in parsePdf(filename)]
-    rows.sort(key=lambda r: (r.Category, r.Description, r.DateAcquired,
-                             r.DateSold, r.RefNumber))
+    p = argparse.ArgumentParser(
+        description='Convert Morgan Stanley 1099-B PDF to CSV')
+    p.add_argument('file', nargs='+', help='PDF file')
+    p.add_argument('--sort',
+                   default=False,
+                   action='store_true',
+                   help='Sort the entries by date')
+    p.add_argument('--group',
+                   default=False,
+                   action='store_true',
+                   help='Group equivalent tax lots (discards ref/plan nums)')
+    args = p.parse_args()
+    rows = [row for filename in args.file for row in parsePdf(filename)]
+    if args.group:
+        mergeRows(rows)
+    if args.sort or args.group:
+        sortRows(rows)
     writer = csv.writer(sys.stdout)
     writer.writerow(FIELDS)
     writer.writerows(rows)
