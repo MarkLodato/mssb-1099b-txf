@@ -13,7 +13,7 @@ text = subprocess.check_output(['pdftotext', '-raw', sys.argv[1],
 
 # Codes and structure are defined at
 # https://www.taxdataexchange.org/txf/txf-spec.html
-categories = {
+CATEGORIES = {
     'Short Term – Noncovered Securities': '711',
     'Long Term – Noncovered Securities': '713',
 }
@@ -22,8 +22,8 @@ categories = {
 # The last line can say 'Total Short Term – Noncovered Securities' or
 # 'Total Short Term Noncovered Securities' (without the hypen) so match
 # only on "^Total".
-categories_pattern = '|'.join(categories)
-section_expr = re.compile(r'(' + categories_pattern + r')'
+CATEGORIES_PATTERN = '|'.join(CATEGORIES)
+SECTION_EXPR = re.compile(r'(' + CATEGORIES_PATTERN + r')'
                           r'(.*?)'
                           r'^Total', re.DOTALL | re.MULTILINE)
 
@@ -39,7 +39,7 @@ section_expr = re.compile(r'(' + categories_pattern + r')'
 #   1234 ALPHABET INC CL C
 #   12345A678
 #   1.000000 VARIOUS 02/01/20 $2,000.00 $1,9999.00
-row_expr = re.compile(
+ROW_EXPR = re.compile(
     r'^(?P<descr>(\w| )+)\s+'
     r'(?P<cusip>\w+)\s+'
     r'(?P<quantity>\d+\.\d+)\s+'
@@ -50,7 +50,7 @@ row_expr = re.compile(
 
 
 def parseAndPrintRows(text, entry_code):
-    for match in row_expr.finditer(text):
+    for match in ROW_EXPR.finditer(text):
         print('TD')
         print('N' + entry_code)
         print('C1')
@@ -69,7 +69,7 @@ print('V042')
 print('A mssb_1099b_to_txf')
 print('D ' + datetime.datetime.now().strftime('%m/%d/%Y'))
 print('^')
-for section_match in section_expr.finditer(text):
-    entry_code = categories[section_match.group(1)]
+for section_match in SECTION_EXPR.finditer(text):
+    entry_code = CATEGORIES[section_match.group(1)]
     contents = section_match.group(2)
     parseAndPrintRows(contents, entry_code)
