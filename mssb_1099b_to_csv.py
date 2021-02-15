@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """Converts Morgan Stanley (MSSB) 1099-B PDFs to CSV."""
 
 import collections
